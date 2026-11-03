@@ -1,6 +1,24 @@
-**/Debug/*.*
-**/.vs/*.*
-**/Chroma/*.*
-/source/.vs/*.*
-/source/x64/*.*
-Chroma/
+# Visual Studio / IDE caches
+**/.vs/
+
+# MSBuild build output directories
+**/Debug/
+**/Release/
+source/x64/
+source/UbiChroma/
+
+# Compiler / linker intermediates and binaries
+**/*.obj
+**/*.pdb
+**/*.ilk
+**/*.idb
+**/*.ipdb
+**/*.iobj
+**/*.res
+**/*.tlog
+**/*.lastbuildstate
+**/*.log
+**/*.exe
+**/*.FileListAbsolute.txt
+**/*.recipe
+.trae/
