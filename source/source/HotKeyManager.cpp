@@ -15,6 +15,11 @@ void HotKeyManager::InitAllHotkeys()
 	m_hotkeyList.push_back(HotKey(ID_HOTKEY_GRY_FLTR, IDC_COMBOBOX_GRY_FLTR_H, IDC_COMBOBOX_GRY_FLTR_L));
 	m_hotkeyList.push_back(HotKey(ID_HOTKEY_TOOL_SCREENSHOT, IDC_COMBOBOX_SS_TOOL_H, IDC_COMBOBOX_SS_TOOL_L));
 	m_hotkeyList.push_back(HotKey(ID_HOTKEY_TOOLGAME_SCREENSHOT, IDC_COMBOBOX_SS_TG_H, IDC_COMBOBOX_SS_TG_L));
+
+	m_hotkeyList.push_back(HotKey(ID_HOTKEY_SHOW_HIDE, IDC_COMBOBOX_SHH_H, IDC_COMBOBOX_SHH_L));
+	HotKey& showHideHotKey = m_hotkeyList.back();
+	showHideHotKey.SetKeyValue(IDC_COMBOBOX_SHH_H, "CTRL");
+	showHideHotKey.SetKeyValue(IDC_COMBOBOX_SHH_L, "q");
 }
 
 bool HotKeyManager::ExistKeyCombination(HotKey& hKey)

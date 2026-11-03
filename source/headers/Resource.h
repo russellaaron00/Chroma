@@ -27,8 +27,8 @@
 #define IDC_SSBROWSE_EDIT               1018
 #define IDSAVE                          1019
 #define IDRESET                         1020
-#define IDC_MWHELP_BUTTON               2000
-#define IDC_MWCLOSE_BUTTON              2001
+#define IDC_COMBOBOX_SHH_H              1021
+#define IDC_COMBOBOX_SHH_L              1022
 #define ID_FILTER_DEFAULT               40002
 #define ID_FILTER_PROTAN                40007
 #define ID_FILTER_DEUTAN                40008
@@ -49,14 +49,15 @@
 #define ID_HOTKEY_GRY_FLTR              40030
 #define ID_HOTKEY_TOOL_SCREENSHOT       40031
 #define ID_HOTKEY_TOOLGAME_SCREENSHOT   40032
+#define ID_HOTKEY_SHOW_HIDE             40033
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        109
-#define _APS_NEXT_COMMAND_VALUE         40025
-#define _APS_NEXT_CONTROL_VALUE         1021
+#define _APS_NEXT_COMMAND_VALUE         40034
+#define _APS_NEXT_CONTROL_VALUE         1023
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

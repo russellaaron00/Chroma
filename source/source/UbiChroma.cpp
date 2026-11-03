@@ -23,6 +23,10 @@ bool g_isToolWindowMax = false;
 bool g_isGameWindowMax = false;
 bool g_isGameWindowMin = false;
 
+                                                                    WINDOWPLACEMENT g_targetPlacement{};
+bool g_targetMinimizedByToggle = false;
+RECT g_rectBeforeMoveSize{};
+
 std::map<int,std::string> globalList;
 
 std::string g_screenshotPath = "";
@@ -35,9 +39,6 @@ bool static isOptionsShowing = false;
 bool static isBrowseShowing = false;
 HICON projectIcon;
 HICON handIcon;
-
-HWND helpButton;
-HWND closeButton;
 
 void StartCaptureWithWindow(const HWND& hwnd, const LPCSTR& windowName, const HWND& desthwnd, int& appliedFilter, const int& currentFilter)
 {    
@@ -52,6 +53,64 @@ void StartCaptureWithWindow(const HWND& hwnd, const LPCSTR& windowName, const HW
     appliedFilter = currentFilter;    
     g_app->StartCapture(desthwnd, hwnd, appliedFilter);
     capturingStart = true;      
+}
+
+void ShowSourceWindowMenu(HWND hwnd)
+{
+    HMENU popupMenu = CreatePopupMenu();
+
+    WINRT_VERIFY(popupMenu);
+    g_windows = EnumerateWindows();
+
+    for (int index = 0; index < (int)g_windows.size(); index++)
+    {
+        if (wcscmp(g_windows.at(index).ClassName().c_str(), L"UbiChroma") != 0)
+        {
+            AppendMenu(popupMenu, MF_STRING, (int)(index + MENU_OFFSET), g_windows.at(index).Title().c_str());
+        }
+    }
+
+    POINT pt;
+    GetCursorPos(&pt);
+    SetForegroundWindow(hwnd);
+    TrackPopupMenu(popupMenu, TPM_LEFTALIGN | TPM_LEFTBUTTON, pt.x, pt.y, 0, hwnd, NULL);
+    DestroyMenu(popupMenu);
+}
+
+void ToggleShowHide(HWND hwnd)
+{
+    if (m_Show)
+    {
+        g_targetMinimizedByToggle = false;
+
+        if (g_index != INVALID_SELECTION && g_index < (INT)g_windows.size())
+        {
+            HWND target = g_windows.at(g_index).Hwnd();
+            if (target && !IsIconic(target))
+            {
+                g_targetPlacement.length = sizeof(WINDOWPLACEMENT);
+                GetWindowPlacement(target, &g_targetPlacement);
+                g_targetMinimizedByToggle = true;
+                ShowWindow(target, SW_MINIMIZE);
+            }
+        }
+
+        ShowWindow(hwnd, SW_HIDE);
+        m_Show = false;
+    }
+    else
+    {
+        m_Show = true;
+
+        if (g_targetMinimizedByToggle && g_index != INVALID_SELECTION && g_index < (INT)g_windows.size())
+        {
+            HWND target = g_windows.at(g_index).Hwnd();
+            SetWindowPlacement(target, &g_targetPlacement);
+            g_targetMinimizedByToggle = false;
+        }
+
+        ShowWindow(hwnd, SW_SHOW);
+    }
 }
 
 void CALLBACK WinEventProc(
@@ -293,89 +352,13 @@ LRESULT CALLBACK WndProcMain(
     DWORD error = 0;
     switch (msg)
     {                 
-        case WM_CREATE:
-        {
-            HDC hdc = GetDC(hwnd);
-            HFONT hButtonFont = CreateFontA(20, 0, 0, 0, FW_DONTCARE, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_OUTLINE_PRECIS,
-                CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, VARIABLE_PITCH, "Roboto");
-            ReleaseDC(hwnd, hdc);
-
-            helpButton = CreateWindowEx(NULL,
-                L"BUTTON",
-                L"Help",
-                WS_TABSTOP | WS_VISIBLE |
-                WS_CHILD | BS_DEFPUSHBUTTON,
-                320,
-                200,
-                100,
-                24,
-                hwnd,
-                (HMENU)IDC_MWHELP_BUTTON,
-                GetModuleHandle(NULL),
-                NULL);
-
-            closeButton = CreateWindowEx(NULL,
-                L"BUTTON",
-                L"Close",
-                WS_TABSTOP | WS_VISIBLE |
-                WS_CHILD | BS_DEFPUSHBUTTON,
-                430,
-                200,
-                100,
-                24,
-                hwnd,
-                (HMENU)IDC_MWCLOSE_BUTTON,
-                GetModuleHandle(NULL),
-                NULL);            
-
-            SendMessage(helpButton, WM_SETFONT, (WPARAM)hButtonFont, (LPARAM)MAKELONG(TRUE, 0));
-            SendMessage(closeButton, WM_SETFONT, (WPARAM)hButtonFont, (LPARAM)MAKELONG(TRUE, 0));
-        }
-        break;      
-        case WM_PAINT:
-        {
-            RECT rc;
-            PAINTSTRUCT ps;
-            HDC hdc = BeginPaint(hwnd, &ps);
-
-            HFONT hFont = CreateFontA(20, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_OUTLINE_PRECIS,
-                CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, VARIABLE_PITCH, "Roboto");
-            LPCSTR szText = "Quick Guide";
-            SetRect(&rc, 75, 30, 40, 50);
-            SetTextColor(hdc, RGB(0, 116, 218));
-            SetBkMode(hdc, TRANSPARENT);
-            DrawTextA(hdc, szText, (INT)strlen(szText), &rc, DT_NOCLIP);
-
-            hFont = CreateFontA(20, 0, 0, 0, FW_DONTCARE, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_OUTLINE_PRECIS,
-                CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, VARIABLE_PITCH, "Roboto");
-
-            szText = " > Right click on this client area.";
-            SetRect(&rc, 75, 70, 40, 50);
-            SetTextColor(hdc, RGB(0, 0, 0));
-            DrawTextA(hdc, szText, (INT)strlen(szText), &rc, DT_NOCLIP);
-
-            szText = " > Select application you want capture.";
-            SetRect(&rc, 75, 100, 40, 50);
-            SetTextColor(hdc, RGB(0, 0, 0));
-            DrawTextA(hdc, szText, (INT)strlen(szText), &rc, DT_NOCLIP);
-
-            szText = " > If application is not captured please make sure that the application is not\n    minimized or in hidden state.";
-            SetRect(&rc, 75, 130, 40, 50);
-            SetTextColor(hdc, RGB(0, 0, 0));
-            DrawTextA(hdc, szText, (INT)strlen(szText), &rc, DT_NOCLIP);
-
-            EndPaint(hwnd, &ps);
-            ReleaseDC(hwnd, hdc);
-        }
-        break;
         case IDC_POPUPMENU:
             switch (lParam)
             {
                 case WM_LBUTTONDBLCLK:
                     if (!m_Show)
                     {
-                        ShowWindow(hwnd, SW_RESTORE);
-                        m_Show = true;
+                        ToggleShowHide(hwnd);
                     }                   
                     break;
                 case WM_RBUTTONDOWN:
@@ -418,17 +401,7 @@ LRESULT CALLBACK WndProcMain(
                 switch (LOWORD(wParam))
                 {
                     case ID_SHOW_HIDE_ITEM:
-                        if (m_Show)
-                        {
-                            ShowWindow(hwnd, SW_HIDE); 
-                            HMENU hMenu = LoadMenuW(NULL, MAKEINTRESOURCE(IDC_POPUPMENU));
-                            m_Show = false;
-                        }
-                        else
-                        {
-                            ShowWindow(hwnd, SW_RESTORE);
-                            m_Show = true;
-                        }
+                        ToggleShowHide(hwnd);
                         break;
                     case ID_TRANSPARENT_ITEM:
                     {
@@ -441,7 +414,8 @@ LRESULT CALLBACK WndProcMain(
                     {
                         g_appliedMode = ID_NONTRANSPARENT_ITEM;
                         long wAttr = GetWindowLongW(hwnd, GWL_EXSTYLE);
-                        SetWindowLongW(hwnd, GWL_EXSTYLE, !wAttr & !WS_EX_TRANSPARENT & !WS_EX_LAYERED);
+                        wAttr = (wAttr & ~WS_EX_TRANSPARENT) & ~WS_EX_LAYERED;
+                        SetWindowLongW(hwnd, GWL_EXSTYLE, wAttr);
                         break;
                     }                        
                     case ID_FILTER_DEFAULT:
@@ -491,7 +465,6 @@ LRESULT CALLBACK WndProcMain(
                             DialogBoxW(NULL, MAKEINTRESOURCE(IDD_SETTINGS), hwnd, (DLGPROC)SettingsProc);                            
                         }                        
                         break;
-                    case IDC_MWHELP_BUTTON:
                     case ID_HELP_ITEM:
                     {
                         HINSTANCE hresult = ShellExecuteA(GetDesktopWindow(), "open", "resource\\Userguide.pdf", NULL, NULL, SW_SHOWNORMAL);
@@ -499,12 +472,6 @@ LRESULT CALLBACK WndProcMain(
                         {
                             assert(hresult);
                         }                        
-                    }
-                    break;
-                    case IDC_MWCLOSE_BUTTON:
-                    {
-                        CloseWindow(hwnd);
-                        DestroyWindow(hwnd);                        
                     }
                     break;
                 }
@@ -535,36 +502,56 @@ LRESULT CALLBACK WndProcMain(
                 g_app->WindowResized(g_windows.at(g_index).Hwnd(), hwnd, 0);
             }
             break;
+        case WM_ENTERSIZEMOVE:
+            GetWindowRect(hwnd, &g_rectBeforeMoveSize);
+            break;
         case WM_EXITSIZEMOVE:
         {
-            if (g_index != INVALID_SELECTION && !IsIconic(hwnd))
+            RECT rc;
+            GetWindowRect(hwnd, &rc);
+
+            // HTCAPTION makes even a plain click start a move loop, so only
+            // restart the capture when the window was actually moved or resized.
+            if (g_index != INVALID_SELECTION && !IsIconic(hwnd) && !EqualRect(&rc, &g_rectBeforeMoveSize))
             {
                 StartCaptureWithWindow(hwnd, globalList[g_appliedFilter].c_str(), g_windows.at(g_index).Hwnd(), g_appliedFilter, g_appliedFilter);
             }
             break;
         }
-        case WM_RBUTTONDOWN:
+        case WM_NCHITTEST:
         {
-            HMENU popupMenu = CreatePopupMenu();
-
-            WINRT_VERIFY(popupMenu);
-            g_windows = EnumerateWindows();
-
-            for (int index = 0; index < g_windows.size(); index++)
+            // Game (click-through) mode must not intercept the mouse
+            if (GetWindowLongW(hwnd, GWL_EXSTYLE) & WS_EX_TRANSPARENT)
             {
-                if (wcscmp(g_windows.at(index).ClassName().c_str(), L"UbiChroma") != 0)
-                {
-                    AppendMenu(popupMenu, MF_STRING, (int)(index + MENU_OFFSET), g_windows.at(index).Title().c_str());
-                }
+                return HTTRANSPARENT;
             }
 
-            POINT pt{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
-            ClientToScreen(hwnd, &pt);
-            SetForegroundWindow(hwnd);
-            TrackPopupMenu(popupMenu, TPM_LEFTALIGN | TPM_LEFTBUTTON, pt.x, pt.y, 0, hwnd, NULL);
-            DestroyMenu(popupMenu);
-            break;
+            POINT pt = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+            RECT rc;
+            GetWindowRect(hwnd, &rc);
+            const int border = 8;
+
+            bool left = pt.x < rc.left + border;
+            bool right = pt.x >= rc.right - border;
+            bool top = pt.y < rc.top + border;
+            bool bottom = pt.y >= rc.bottom - border;
+
+            if (top && left) return HTTOPLEFT;
+            if (top && right) return HTTOPRIGHT;
+            if (bottom && left) return HTBOTTOMLEFT;
+            if (bottom && right) return HTBOTTOMRIGHT;
+            if (left) return HTLEFT;
+            if (right) return HTRIGHT;
+            if (top) return HTTOP;
+            if (bottom) return HTBOTTOM;
+            return HTCAPTION;
         }
+        case WM_NCRBUTTONUP:
+            ShowSourceWindowMenu(hwnd);
+            break;
+        case WM_RBUTTONDOWN:
+            ShowSourceWindowMenu(hwnd);
+            break;
         case WM_KEYDOWN:
             switch (wParam)
             {
@@ -696,6 +683,9 @@ LRESULT CALLBACK WndProcMain(
                 case ID_HOTKEY_GRY_FLTR:
                     SendMessageA(hwnd, WM_COMMAND, MAKEWPARAM(ID_FILTER_GSCALE,0), 0);
                     break;
+                case ID_HOTKEY_SHOW_HIDE:
+                    ToggleShowHide(hwnd);
+                    break;
             }
             break;
         default:
@@ -734,7 +724,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     wcex.hInstance = hInstance;
     wcex.hIcon = LoadIconA(hInstance, MAKEINTRESOURCEA(IDI_AUTOMATION_ICON));
     wcex.hCursor = LoadCursor(NULL, IDC_ARROW);
-    wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+    wcex.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
     wcex.lpszMenuName = NULL;
     wcex.lpszClassName = L"UbiChroma";
     wcex.hIconSm = LoadIconA(wcex.hInstance, MAKEINTRESOURCEA(IDI_AUTOMATION_ICON));
@@ -744,7 +734,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         WS_EX_TOPMOST,
         L"UbiChroma",
         L"UbiChroma",
-        WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SIZEBOX,
+        WS_POPUP,
         CW_USEDEFAULT,
         CW_USEDEFAULT,
         600,
